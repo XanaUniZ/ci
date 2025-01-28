@@ -261,14 +261,16 @@ end
 
 %-------------------------------------------------------------------------
 %% Ex. 6: Color balance
-saturationBoost = 2.6;
+saturationBoost = 1.6;
 imgHSV = rgb2hsv(imgDenoised);
 S = imgHSV(:,:,2);
 S = saturationBoost * S;
 S(S>1) = 1;
 imgHSV(:,:,2)=S;
-imgColor = hsv2rgb(imgHSV);
-figure;imshow(imgColor);
+imgColor = hsv2rgb(imgHSV)
+
+
+% Functions Ex. 6
 
 %-------------------------------------------------------------------------
 % Ex. 7: Tone reproduction
