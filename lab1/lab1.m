@@ -62,7 +62,7 @@ fprintf('Max: %.4f\n', max(imageDataLin(:)));
 
 % imgDemNN = demosaic_nn(imageDataLin);
 imgDem = demosaic_bl(imageDataLin);
-figure;imshow(imgDem);
+% figure;imshow(imgDem);
 % For now use the matlab function
 % imageDataLin_uint16 = uint16(imageDataLin * (max_val-min_val) + min_val);
 % J = demosaic(imageData,"grbg");
@@ -100,16 +100,14 @@ function demImage = demosaic_bl (inImage)
     greenChannel(2:2:end, 1:2:end) = inImage(2:2:end, 1:2:end);
 
     % Perform bilinear interpolation
-    % Interpolate Red channel
+    % Interpolate Red channel by using convolution
     redChannel = convolve(redChannel);
-    
-    % Interpolate Green channel
+    % Interpolate Green channel by using convolution
     greenChannel = convolveG(greenChannel);
-    
-    % Interpolate Blue channel
+    % Interpolate Blue channel by using convolution
     blueChannel = convolve(blueChannel);
     
-    % Combine interpolated channels into RGB image
+    % Put them together
     demImage = cat(3, redChannel, greenChannel, blueChannel);
 
 end
@@ -152,13 +150,15 @@ end
 % Ex. 4: White balancing
 % Gray World Balancing
 imgGWbal = gw_balancing(imgDem);
-figure;imshow(imgGWbal);
+% figure;imshow(imgGWbal);
 
 % Gray World Balancing
 imgWWbal = ww_balancing(imgDem);
-figure;imshow(imgWWbal);
+% figure;imshow(imgWWbal);
 
 % Manual Balancing
+
+imgBalanced = imgGWbal;
 
 % Functions Ex. 4
 function balancedIm = gw_balancing (inImage)
@@ -178,8 +178,54 @@ function balancedIm = ww_balancing (inImage)
 end
 %-------------------------------------------------------------------------
 % Ex. 5: Denoising
+imgDenoised = denoise(imgBalanced, @denoiseGaussian);
+figure;imshow(imgDenoised);
 
 % Functions Ex. 5
+function denoised = denoise(inImage, denoiseFunc) 
+    kernelSize = 3;
+    % Denoise each channel
+    redChannel = denoiseFunc(inImage(:,:,1), kernelSize);
+    greenChannel = denoiseFunc(inImage(:,:,2), kernelSize);
+    blueChannel = denoiseFunc(inImage(:,:,3), kernelSize);
+
+    % Put them together
+    denoised = cat(3, redChannel, greenChannel, blueChannel);
+    
+end
+
+function denoised = denoiseMean(channel_in, kSize)    
+    % kernel = [1, 1, 1; 1, 1, 1; 1, 1, 1]; % weights
+    kernel = ones(kSize);
+    kernel = kernel / (kSize*kSize);    % Normalize the kernel
+    
+    % Apply convolution to the image and the mask
+    denoised = conv2(channel_in, kernel, 'same'); 
+end
+
+function denoised = denoiseMedian(channel_in, kSize)    
+    % Interpolate missing values using convolution
+    kernel = [1, 1, 1; 1, 1, 1; 1, 1, 1]; % Bilinear weights
+    kernel = kernel / sum(kernel(:));    % Normalize the kernel
+    
+    % Apply convolution to the image and the mask
+    denoised = conv2(channel_in, kernel, 'same'); 
+end
+
+function denoised = denoiseGaussian(channel_in, kSize)
+    % Mean and std
+    std = 1.;
+
+    % Create a grid with X and Y
+    [X, Y] = meshgrid(-kSize:kSize, -kSize:kSize);
+
+    % Compute Gaussian function for the kernel
+    kernel = exp(-(X.^2 + Y.^2) / (2 * std^2)) / (2 * pi * std^2);
+    kernel = kernel / sum(kernel(:));
+    
+    % Apply convolution to the image and the mask
+    denoised = conv2(channel_in, kernel, 'same'); 
+end
 
 %-------------------------------------------------------------------------
 % Ex. 6: Color balance
