@@ -4,8 +4,6 @@
 % Author:  M. Peribañez
 % Author:  X. Anadon
 %-------------------------------------------------------------------------
-% SLAM for Karel the robot in 1D
-%-------------------------------------------------------------------------
 
 clear all; % varialbes
 close all; % figures
@@ -51,7 +49,7 @@ fprintf('Max: %.4f\n', max(imageDataLin(:)));
 % figure;imshow(imageDataLin);
 
 %-------------------------------------------------------------------------
-% Ex. 3: Demosaicing
+%% Ex. 3: Demosaicing
 % Identify the patern
 % topLeftSquare = imageDataLin(1:2, 1:2);
 % disp('Top-Left 2x2 Square:');
@@ -61,8 +59,11 @@ fprintf('Max: %.4f\n', max(imageDataLin(:)));
 % demosaic_bl()
 
 % imgDemNN = demosaic_nn(imageDataLin);
-imgDem = demosaic_bl(imageDataLin);
-% figure;imshow(imgDem);
+%imgDem = demosaic(imageDataLin, @convolveBL, @convolveBL);
+%figure;imshow(imgDem);
+
+imgDem = demosaic(imageDataLin, @convolveNN_RB, @convolveNN_G);
+%figure;imshow(imgDem);
 % For now use the matlab function
 % imageDataLin_uint16 = uint16(imageDataLin * (max_val-min_val) + min_val);
 % J = demosaic(imageData,"grbg");
@@ -79,7 +80,7 @@ imgDem = demosaic_bl(imageDataLin);
 % figure;imshow(J);
 
 % % Functions Ex. 3
-function demImage = demosaic_bl (inImage)
+function demImage = demosaic (inImage, convolve_RB, convolve_G)
     % Get the size of the input image
     [height, width] = size(inImage);
     
@@ -88,7 +89,7 @@ function demImage = demosaic_bl (inImage)
     greenChannel = zeros(height, width);
     blueChannel = zeros(height, width);
 
-     % Extract RGGB pattern components
+    % Extract RGGB pattern components
     % Red channel (R in RGGB is at [1,1])
     redChannel(1:2:end, 1:2:end) = inImage(1:2:end, 1:2:end);
     
@@ -101,18 +102,19 @@ function demImage = demosaic_bl (inImage)
 
     % Perform bilinear interpolation
     % Interpolate Red channel by using convolution
-    redChannel = convolve(redChannel);
+    redChannel = convolve_RB(redChannel);
     % Interpolate Green channel by using convolution
-    greenChannel = convolveG(greenChannel);
+    greenChannel = convolve_G(greenChannel);
     % Interpolate Blue channel by using convolution
-    blueChannel = convolve(blueChannel);
+    blueChannel = convolve_RB(blueChannel);
     
     % Put them together
     demImage = cat(3, redChannel, greenChannel, blueChannel);
 
 end
 
-function channel = convolve(channel_in)
+
+function channel = convolveBL(channel_in)
     % Create a mask of known values
     mask = channel_in > 0;
     
@@ -129,25 +131,29 @@ function channel = convolve(channel_in)
     % channel(mask) = channel_in(mask);   
 end
 
-function channel = convolveG(channel_in)
-    % Create a mask of known values
-    mask = channel_in > 0;
-    
+function channel = convolveNN_RB(channel_in)
     % Interpolate missing values using convolution
-    kernel = [0, 1, 0; 1, 1, 1; 0, 1, 0]; % Bilinear weights
-    kernel = kernel / sum(kernel(:));    % Normalize the kernel
+    kernel = [1, 1, 0; 1, 1, 0; 0, 0, 0]; % Bilinear weights
+    % kernel = kernel / sum(kernel(:));    % Normalize the kernel
     
     % Apply convolution to the image and the mask
-    interpolated = conv2(channel_in, kernel, 'same');
-    weight = conv2(double(mask), kernel, 'same');
+    channel = conv2(channel_in, kernel, 'same');
+     
+end
+
+function channel = convolveNN_G(channel_in)
     
-    % Combine interpolated values with known values
-    channel = interpolated ./ weight; % Normalize interpolation by weights
-    % channel(mask) = channel_in(mask);   
+    % Interpolate missing values using convolution
+    kernel = [0, 1, 1; 0, 0, 0; 0, 0, 0]; % Bilinear weights
+    % kernel = kernel / sum(kernel(:));    % Normalize the kernel
+    
+    % Apply convolution to the image and the mask
+    channel = conv2(channel_in, kernel, 'same');
+     
 end
 
 %-------------------------------------------------------------------------
-% Ex. 4: White balancing
+%% Ex. 4: White balancing
 % Gray World Balancing
 imgGWbal = gw_balancing(imgDem);
 % figure;imshow(imgGWbal);
@@ -157,8 +163,13 @@ imgWWbal = ww_balancing(imgDem);
 % figure;imshow(imgWWbal);
 
 % Manual Balancing
+imgMbal = m_balancing(imgDem);
+%figure;imshow(imgMbal);
 
 imgBalanced = imgGWbal;
+
+pointGray = imageDataLin(200, 100);
+%figure;imshow(imgDem);
 
 % Functions Ex. 4
 function balancedIm = gw_balancing (inImage)
@@ -176,9 +187,33 @@ function balancedIm = ww_balancing (inImage)
     balancer = [gMax/rMax, 1, gMax/bMax];
     balancedIm = inImage .* reshape(balancer, 1, 1, []);
 end
+
+function balancedIm = m_balancing (inImage)
+    %simshow(inImage);
+    % Usar ginput para capturar un clic del usuario
+    %[x, y] = ginput(1); % Permite un solo clic (puedes cambiar el número para más clics)
+
+    % Convertir las coordenadas a índices enteros
+    %col = round(x); % Columna (width)
+    %row = round(y); % Fila (height)
+    col = 1940;
+    row = 2435;
+    channelSum = sum(inImage(row,col,:));
+    S_R = channelSum / (3*inImage(row,col,1));
+    S_G = channelSum / (3*inImage(row,col,2));
+    S_B = channelSum / (3*inImage(row,col,3));
+
+    balancer = [S_R, S_G, S_B];
+    balancedIm = inImage .* reshape(balancer, 1, 1, []);
+
+end
 %-------------------------------------------------------------------------
-% Ex. 5: Denoising
+%% Ex. 5: Denoising
 imgDenoised = denoise(imgBalanced, @denoiseGaussian);
+%figure;imshow(imgDenoised);
+
+% Apply median filtering
+imgDenoised = denoise(imgBalanced, @denoiseMedian);
 figure;imshow(imgDenoised);
 
 % Functions Ex. 5
@@ -203,14 +238,11 @@ function denoised = denoiseMean(channel_in, kSize)
     denoised = conv2(channel_in, kernel, 'same'); 
 end
 
-function denoised = denoiseMedian(channel_in, kSize)    
-    % Interpolate missing values using convolution
-    kernel = [1, 1, 1; 1, 1, 1; 1, 1, 1]; % Bilinear weights
-    kernel = kernel / sum(kernel(:));    % Normalize the kernel
-    
-    % Apply convolution to the image and the mask
-    denoised = conv2(channel_in, kernel, 'same'); 
+function denoised = denoiseMedian(channel_in, kSize)
+    % Get the dimensions of the input channel
+    denoised = medfilt2(channel_in, [2 * kSize + 1, 2 * kSize + 1]);
 end
+
 
 function denoised = denoiseGaussian(channel_in, kSize)
     % Mean and std
@@ -228,8 +260,9 @@ function denoised = denoiseGaussian(channel_in, kSize)
 end
 
 %-------------------------------------------------------------------------
-% Ex. 6: Color balance
+%% Ex. 6: Color balance
 
+imgHSV = rgb2hsv(imgDenoised);
 % Functions Ex. 6
 
 %-------------------------------------------------------------------------
