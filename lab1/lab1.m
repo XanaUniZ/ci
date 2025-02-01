@@ -261,21 +261,40 @@ end
 
 %-------------------------------------------------------------------------
 %% Ex. 6: Color balance
-saturationBoost = 2.6;
+saturationBoost = 1.3;
 imgHSV = rgb2hsv(imgDenoised);
 S = imgHSV(:,:,2);
 S = saturationBoost * S;
 S(S>1) = 1;
 imgHSV(:,:,2)=S;
 imgColor = hsv2rgb(imgHSV);
-figure;imshow(imgColor);
+% figure;imshow(imgColor);
 
 %-------------------------------------------------------------------------
 % Ex. 7: Tone reproduction
+% Linear scaling
+percentage = 0.7;
+imgGray = rgb2gray(imgColor);
+maxGray = max(imgGray, [], "all");
+% imgColor = percentage*maxGray+imgColor;
+imgColor = imgColor/(percentage*maxGray);
+imgColor = min(max(imgColor, 0), 1);
+% figure;imshow(imgColor);
 
-% Functions Ex. 7
-
+% Non-Linnear GC
+gamma = 2.4;
+imgMinorMask = (imgColor <= 0.0031308);
+imgMajorMask = (imgColor > 0.0031308);
+imgGC = zeros(size(imgColor));
+imgGC(imgMinorMask) = 12.92*imgColor(imgMinorMask);
+imgGC(imgMajorMask) = (1+0.055)*imgColor(imgMajorMask).^(1/gamma)-0.055;
+% figure;imshow(imgGC);
 %-------------------------------------------------------------------------
 % Ex. 8: Compression
+imgFinal = imgGC;
+imwrite(imgFinal,"imgFinal.png")
+quality = 95;
+filename = sprintf('imgFinal_%d.jpeg', quality);
+imgFinal_uint8 = uint8(imgFinal * 255);
+imwrite(imgFinal_uint8, filename, 'Quality', quality);
 
-% Functions Ex. 8
