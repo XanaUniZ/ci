@@ -14,6 +14,7 @@ format long
 % Ex. 1: Read the image 
 
 imageData = imread('IMG_0596.tiff');
+% figure; imshow(imageData);
 
 % Get the size of the image
 [height, width, numChannels] = size(imageData);
@@ -36,14 +37,14 @@ fprintf('Image numChannels: %d\n', numChannels);
 % Ex. 2: Linearization
 min_val = 1023;
 max_val = 15600;
-imageDataLin = (imageDataDouble-min_val)/(max_val-min_val);
+image = (imageDataDouble-min_val)/(max_val-min_val);
 
 % Ensuring not out of range
-imageDataLin = max(0, min(1, imageDataLin));
+image = max(0, min(1, image));
 
 % Display the results
-fprintf('\nMin: %.4f\n', min(imageDataLin(:)));
-fprintf('Max: %.4f\n', max(imageDataLin(:)));
+fprintf('\nMin: %.4f\n', min(image(:)));
+fprintf('Max: %.4f\n', max(image(:)));
 
 % Optionally, visualize the image
 % figure;imshow(imageDataLin);
@@ -58,12 +59,15 @@ fprintf('Max: %.4f\n', max(imageDataLin(:)));
 % demosaic_nn()
 % demosaic_bl()
 
-% imgDemNN = demosaic_nn(imageDataLin);
-%imgDem = demosaic(imageDataLin, @convolveBL, @convolveBL);
-%figure;imshow(imgDem);
+image = my_demosaic(image, @convolveBL, @convolveBLG);
+% figure;imshow(imgDem);
 
-imgDem = demosaic(imageDataLin, @convolveNN_RB, @convolveNN_G);
-%figure;imshow(imgDem);
+% imgDem = my_demosaic(imageDataLin, @convolveNN_RB, @convolveNN_G);
+% figure;imshow(imgDem);
+% topLeftSquare = imgDem(1:2, 1:2);
+% disp('Top-Left 2x2 Square:');
+% disp(topLeftSquare);
+
 % For now use the matlab function
 % imageDataLin_uint16 = uint16(imageDataLin * (max_val-min_val) + min_val);
 % J = demosaic(imageData,"grbg");
@@ -80,7 +84,7 @@ imgDem = demosaic(imageDataLin, @convolveNN_RB, @convolveNN_G);
 % figure;imshow(J);
 
 % % Functions Ex. 3
-function demImage = demosaic (inImage, convolve_RB, convolve_G)
+function demImage = my_demosaic (inImage, convolve_RB, convolve_G)
     % Get the size of the input image
     [height, width] = size(inImage);
     
@@ -131,6 +135,22 @@ function channel = convolveBL(channel_in)
     % channel(mask) = channel_in(mask);   
 end
 
+function channel = convolveBLG(channel_in)
+    % Create a mask of known values
+    mask = channel_in > 0;
+    
+    % Interpolate missing values using convolution
+    kernel = [0, 1, 0; 1, 1, 1; 0, 1, 0]; % Bilinear weights
+    
+    % Apply convolution to the image and the mask
+    interpolated = conv2(channel_in, kernel, 'same');
+    weight = conv2(double(mask), kernel, 'same');
+    
+    % Combine interpolated values with known values
+    channel = interpolated ./ weight; % Normalize interpolation by weights
+    % channel(mask) = channel_in(mask);   
+end
+
 function channel = convolveNN_RB(channel_in)
     % Interpolate missing values using convolution
     kernel = [1, 1, 0; 1, 1, 0; 0, 0, 0]; % Bilinear weights
@@ -144,7 +164,7 @@ end
 function channel = convolveNN_G(channel_in)
     
     % Interpolate missing values using convolution
-    kernel = [0, 1, 1; 0, 0, 0; 0, 0, 0]; % Bilinear weights
+    kernel = [0, 1, 0; 0, 1, 0; 0, 0, 0]; % Bilinear weights
     % kernel = kernel / sum(kernel(:));    % Normalize the kernel
     
     % Apply convolution to the image and the mask
@@ -155,20 +175,17 @@ end
 %-------------------------------------------------------------------------
 %% Ex. 4: White balancing
 % Gray World Balancing
-imgGWbal = gw_balancing(imgDem);
+imageGW = gw_balancing(image);
 % figure;imshow(imgGWbal);
 
 % Gray World Balancing
-imgWWbal = ww_balancing(imgDem);
+imageWW = ww_balancing(image);
 % figure;imshow(imgWWbal);
 
 % Manual Balancing
-imgMbal = m_balancing(imgDem);
-%figure;imshow(imgMbal);
+image = m_balancing(image);
+%figure;imshow(image);
 
-imgBalanced = imgGWbal;
-
-pointGray = imageDataLin(200, 100);
 %figure;imshow(imgDem);
 
 % Functions Ex. 4
@@ -209,7 +226,7 @@ function balancedIm = m_balancing (inImage)
 end
 %-------------------------------------------------------------------------
 %% Ex. 5: Denoising
-imgDenoised = denoise(imgBalanced, @denoiseGaussian);
+image = denoise(image, @denoiseGaussian);
 %figure;imshow(imgDenoised);
 
 % Apply median filtering
@@ -262,36 +279,37 @@ end
 %-------------------------------------------------------------------------
 %% Ex. 6: Color balance
 saturationBoost = 1.3;
-imgHSV = rgb2hsv(imgDenoised);
+imgHSV = rgb2hsv(image);
 S = imgHSV(:,:,2);
 S = saturationBoost * S;
 S(S>1) = 1;
 imgHSV(:,:,2)=S;
-imgColor = hsv2rgb(imgHSV);
+image = hsv2rgb(imgHSV);
 % figure;imshow(imgColor);
 
 %-------------------------------------------------------------------------
 % Ex. 7: Tone reproduction
 % Linear scaling
-percentage = 0.7;
-imgGray = rgb2gray(imgColor);
-maxGray = max(imgGray, [], "all");
-% imgColor = percentage*maxGray+imgColor;
-imgColor = imgColor/(percentage*maxGray);
-imgColor = min(max(imgColor, 0), 1);
-% figure;imshow(imgColor);
+% percentage = 0.7;
+% imgGray = rgb2gray(image);
+% maxGray = max(imgGray, [], "all");
+% % imgColor = percentage*maxGray+imgColor;
+% image = image/(percentage*maxGray);
+% image = min(max(image, 0), 1);
+% % figure;imshow(imgColor);
 
 % Non-Linnear GC
 gamma = 2.4;
-imgMinorMask = (imgColor <= 0.0031308);
-imgMajorMask = (imgColor > 0.0031308);
-imgGC = zeros(size(imgColor));
-imgGC(imgMinorMask) = 12.92*imgColor(imgMinorMask);
-imgGC(imgMajorMask) = (1+0.055)*imgColor(imgMajorMask).^(1/gamma)-0.055;
-% figure;imshow(imgGC);
+imgMinorMask = (image <= 0.0031308);
+imgMajorMask = (image > 0.0031308);
+imgGC = zeros(size(image));
+imgGC(imgMinorMask) = 12.92*image(imgMinorMask);
+imgGC(imgMajorMask) = (1+0.055)*image(imgMajorMask).^(1/gamma)-0.055;
+image = imgGC;
+figure;imshow(image);
 %-------------------------------------------------------------------------
 % Ex. 8: Compression
-imgFinal = imgGC;
+imgFinal = image;
 imwrite(imgFinal,"imgFinal.png")
 quality = 95;
 filename = sprintf('imgFinal_%d.jpeg', quality);

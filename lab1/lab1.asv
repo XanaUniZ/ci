@@ -14,6 +14,7 @@ format long
 % Ex. 1: Read the image 
 
 imageData = imread('IMG_0596.tiff');
+% figure; imshow(imageData);
 
 % Get the size of the image
 [height, width, numChannels] = size(imageData);
@@ -59,11 +60,15 @@ fprintf('Max: %.4f\n', max(imageDataLin(:)));
 % demosaic_bl()
 
 % imgDemNN = demosaic_nn(imageDataLin);
-%imgDem = demosaic(imageDataLin, @convolveBL, @convolveBL);
+%imgDem = my_demosaic(imageDataLin, @convolveBL, @convolveBL);
 %figure;imshow(imgDem);
 
-imgDem = demosaic(imageDataLin, @convolveNN_RB, @convolveNN_G);
-%figure;imshow(imgDem);
+imgDem = my_demosaic(imageDataLin, @convolveNN_RB, @convolveNN_G);
+% figure;imshow(imgDem);
+% topLeftSquare = imgDem(1:2, 1:2);
+% disp('Top-Left 2x2 Square:');
+% disp(topLeftSquare);
+
 % For now use the matlab function
 % imageDataLin_uint16 = uint16(imageDataLin * (max_val-min_val) + min_val);
 % J = demosaic(imageData,"grbg");
@@ -80,7 +85,7 @@ imgDem = demosaic(imageDataLin, @convolveNN_RB, @convolveNN_G);
 % figure;imshow(J);
 
 % % Functions Ex. 3
-function demImage = demosaic (inImage, convolve_RB, convolve_G)
+function demImage = my_demosaic (inImage, convolve_RB, convolve_G)
     % Get the size of the input image
     [height, width] = size(inImage);
     
@@ -131,6 +136,8 @@ function channel = convolveBL(channel_in)
     % channel(mask) = channel_in(mask);   
 end
 
+function channel = convolveBLG(channel_in)
+
 function channel = convolveNN_RB(channel_in)
     % Interpolate missing values using convolution
     kernel = [1, 1, 0; 1, 1, 0; 0, 0, 0]; % Bilinear weights
@@ -144,7 +151,7 @@ end
 function channel = convolveNN_G(channel_in)
     
     % Interpolate missing values using convolution
-    kernel = [0, 1, 1; 0, 0, 0; 0, 0, 0]; % Bilinear weights
+    kernel = [0, 1, 0; 0, 1, 0; 0, 0, 0]; % Bilinear weights
     % kernel = kernel / sum(kernel(:));    % Normalize the kernel
     
     % Apply convolution to the image and the mask
@@ -281,20 +288,20 @@ imgColor = imgColor/(percentage*maxGray);
 imgColor = min(max(imgColor, 0), 1);
 % figure;imshow(imgColor);
 
-% Functions Ex. 7
+% Non-Linnear GC
 gamma = 2.4;
 imgMinorMask = (imgColor <= 0.0031308);
 imgMajorMask = (imgColor > 0.0031308);
 imgGC = zeros(size(imgColor));
 imgGC(imgMinorMask) = 12.92*imgColor(imgMinorMask);
 imgGC(imgMajorMask) = (1+0.055)*imgColor(imgMajorMask).^(1/gamma)-0.055;
-figure;imshow(imgGC);
+% figure;imshow(imgGC);
 %-------------------------------------------------------------------------
 % Ex. 8: Compression
 imgFinal = imgGC;
 imwrite(imgFinal,"imgFinal.png")
 quality = 95;
-filename = sprintf('imgFinal_%d.jpg', quality);
-imwrite(imageData, 'imgFinal.jpg', 'Quality', 95);
+filename = sprintf('imgFinal_%d.jpeg', quality);
+imgFinal_uint8 = uint8(imgFinal * 255);
+imwrite(imgFinal_uint8, filename, 'Quality', quality);
 
-% Functions Ex. 8
