@@ -183,6 +183,7 @@ imageWW = ww_balancing(image);
 % figure;imshow(imgWWbal);
 
 % Manual Balancing
+% image = m_balancing(image);
 image = m_balancing(image);
 %figure;imshow(image);
 
@@ -206,15 +207,17 @@ function balancedIm = ww_balancing (inImage)
 end
 
 function balancedIm = m_balancing (inImage)
-    %simshow(inImage);
-    % Usar ginput para capturar un clic del usuario
-    %[x, y] = ginput(1); % Permite un solo clic (puedes cambiar el número para más clics)
-
-    % Convertir las coordenadas a índices enteros
-    %col = round(x); % Columna (width)
-    %row = round(y); % Fila (height)
-    col = 1940;
-    row = 2435;
+    % imshow(inImage);
+    % % Usar ginput para capturar un clic del usuario
+    % [x, y] = ginput(1); % Permite un solo clic (puedes cambiar el número para más clics)
+    % 
+    % % Convertir las coordenadas a índices enteros
+    % col = round(x); % Columna (width)
+    % row = round(y); % Fila (height)
+    % col
+    % row
+    col = 3013;
+    row = 1425;
     channelSum = sum(inImage(row,col,:));
     S_R = channelSum / (3*inImage(row,col,1));
     S_G = channelSum / (3*inImage(row,col,2));
@@ -226,80 +229,170 @@ function balancedIm = m_balancing (inImage)
 end
 %-------------------------------------------------------------------------
 %% Ex. 5: Denoising
-image = denoise(image, @denoiseGaussian);
-%figure;imshow(imgDenoised);
+% imgDenoised = denoise(image, @denoiseMean, 5);
+% figure;imshow(imgDenoised);
+% 
+% imgDenoised = denoise(image, @denoiseMean, 10);
+% figure;imshow(imgDenoised);
+% 
+% imgDenoised = denoise(image, @denoiseMean, 50, true);
+% figure;imshow(imgDenoised);
 
-% Apply median filtering
-%imgDenoised = denoise(imgBalanced, @denoiseMedian);
-%figure;imshow(imgDenoised);
+% imgDenoised = denoise(image, @denoiseMedian, 5);
+% figure;imshow(imgDenoised);
+% 
+% imgDenoised = denoise(image, @denoiseMedian, 10);
+% figure;imshow(imgDenoised);
+% 
+% imgDenoised = denoise(image, @denoiseMedian, 50);
+% figure;imshow(imgDenoised);
+
+image = denoise(image, @denoiseGaussian, 10, false);
+% figure;imshow(imgDenoised);
+
 
 % Functions Ex. 5
-function denoised = denoise(inImage, denoiseFunc) 
-    kernelSize = 3;
+function denoised = denoise(inImage, denoiseFunc, kernelSize, plotFFT) 
+    % Handle optional plot flag
+    if nargin < 4
+        plotFFT = false;
+    end
+
     % Denoise each channel
-    redChannel = denoiseFunc(inImage(:,:,1), kernelSize);
-    greenChannel = denoiseFunc(inImage(:,:,2), kernelSize);
-    blueChannel = denoiseFunc(inImage(:,:,3), kernelSize);
+    redChannel = denoiseFunc(inImage(:,:,1), kernelSize, plotFFT);
+    greenChannel = denoiseFunc(inImage(:,:,2), kernelSize, false);
+    blueChannel = denoiseFunc(inImage(:,:,3), kernelSize, false);
 
     % Put them together
     denoised = cat(3, redChannel, greenChannel, blueChannel);
     
 end
 
-function denoised = denoiseMean(channel_in, kSize)    
+function denoised = denoiseMean(channel_in, kSize, plotFFT)    
     % kernel = [1, 1, 1; 1, 1, 1; 1, 1, 1]; % weights
     kernel = ones(kSize);
     kernel = kernel / (kSize*kSize);    % Normalize the kernel
+    if plotFFT
+        % Compute FFT for mean kernel
+        fft_mean = fft2(kernel);
+        fft_mean_shifted = fftshift(fft_mean);
+        magnitude_mean = abs(fft_mean_shifted);
+        log_magnitude_mean = log(1 + magnitude_mean);  % Log scale for visualization
+        
+        % Plot results
+        figure;
+        
+        % Mean kernel spatial domain
+        subplot(2, 2, 1);
+        imagesc(kernel);
+        title('Mean Kernel (Spatial Domain)');
+        colorbar;
+        axis image;
+        
+        % Mean kernel frequency domain
+        subplot(2, 2, 2);
+        imagesc(log_magnitude_mean);
+        title('Mean FFT Magnitude (Log Scale)');
+        colorbar;
+        axis image;
+    end
     
     % Apply convolution to the image and the mask
     denoised = conv2(channel_in, kernel, 'same'); 
 end
 
-function denoised = denoiseMedian(channel_in, kSize)
+function denoised = denoiseMedian(channel_in, kSize, plotFFT)
+    % % Get the dimensions of the input channel
+    % [rows, cols] = size(channel_in);
+    % 
+    % % Initialize the denoised output
+    % denoised = zeros(rows, cols);
+    % 
+    % % Iterate over each pixel in the original image
+    % for i = 1:rows
+    %     for j = 1:cols
+    %         % Determine the neighborhood bounds clamped to the image edges
+    %         rowStart = max(1, i - kSize);
+    %         rowEnd = min(rows, i + kSize);
+    %         colStart = max(1, j - kSize);
+    %         colEnd = min(cols, j + kSize);
+    % 
+    %         % Extract the valid neighborhood window
+    %         window = channel_in(rowStart:rowEnd, colStart:colEnd);
+    % 
+    %         % Compute the median of the window and assign to output
+    %         denoised(i, j) = median(window(:));
+    %     end
+    % end
+
     % Get the dimensions of the input channel
     denoised = medfilt2(channel_in, [2 * kSize + 1, 2 * kSize + 1]);
 end
 
 
-function denoised = denoiseGaussian(channel_in, kSize)
+function denoised = denoiseGaussian(channel_in, kSize, plotFFT)
     % Mean and std
-    std = 1.;
+    std = 2.;
 
     % Create a grid with X and Y
-    [X, Y] = meshgrid(-kSize:kSize, -kSize:kSize);
+    [X, Y] = meshgrid(-kSize/2:kSize/2, -kSize/2:kSize/2);
 
     % Compute Gaussian function for the kernel
     kernel = exp(-(X.^2 + Y.^2) / (2 * std^2)) / (2 * pi * std^2);
     kernel = kernel / sum(kernel(:));
+    if plotFFT
+        % Compute FFT for mean kernel
+        fft_mean = fft2(kernel);
+        fft_mean_shifted = fftshift(fft_mean);
+        magnitude_mean = abs(fft_mean_shifted);
+        log_magnitude_mean = log(1 + magnitude_mean);  % Log scale for visualization
+        
+        % Plot results
+        figure;
+        
+        % Mean kernel spatial domain
+        subplot(2, 2, 1);
+        imagesc(kernel);
+        title('Gaussian Kernel (Spatial Domain)');
+        colorbar;
+        axis image;
+        
+        % Mean kernel frequency domain
+        subplot(2, 2, 2);
+        imagesc(log_magnitude_mean);
+        title('Gaussian FFT Magnitude (Log Scale)');
+        colorbar;
+        axis image;
+    end
     
     % Apply convolution to the image and the mask
     denoised = conv2(channel_in, kernel, 'same'); 
 end
 
-%-------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 %% Ex. 6: Color balance
-saturationBoost = 1.3;
+saturationBoost = 1.5;
 imgHSV = rgb2hsv(image);
 S = imgHSV(:,:,2);
 S = saturationBoost * S;
 S(S>1) = 1;
 imgHSV(:,:,2)=S;
 image = hsv2rgb(imgHSV);
-% figure;imshow(imgColor);
+% figure;imshow(image);
 
 %-------------------------------------------------------------------------
 % Ex. 7: Tone reproduction
 % Linear scaling
-% percentage = 0.7;
-% imgGray = rgb2gray(image);
-% maxGray = max(imgGray, [], "all");
-% % imgColor = percentage*maxGray+imgColor;
-% image = image/(percentage*maxGray);
-% image = min(max(image, 0), 1);
-% % figure;imshow(imgColor);
+percentage = 0.15;
+imgGray = rgb2gray(image);
+maxGray = max(imgGray, [], "all");
+% imgColor = percentage*maxGray+imgColor;
+image = image*(1+percentage*maxGray);
+image = min(max(image, 0), 1);
+% figure;imshow(image);
 
 % Non-Linnear GC
-gamma = 2.4;
+gamma = 1.6;
 imgMinorMask = (image <= 0.0031308);
 imgMajorMask = (image > 0.0031308);
 imgGC = zeros(size(image));
@@ -307,12 +400,12 @@ imgGC(imgMinorMask) = 12.92*image(imgMinorMask);
 imgGC(imgMajorMask) = (1+0.055)*image(imgMajorMask).^(1/gamma)-0.055;
 image = imgGC;
 figure;imshow(image);
-%-------------------------------------------------------------------------
-% Ex. 8: Compression
-imgFinal = image;
-imwrite(imgFinal,"imgFinal.png")
-quality = 95;
-filename = sprintf('imgFinal_%d.jpeg', quality);
-imgFinal_uint8 = uint8(imgFinal * 255);
-imwrite(imgFinal_uint8, filename, 'Quality', quality);
+% %-------------------------------------------------------------------------
+% % Ex. 8: Compression
+% imgFinal = image;
+% imwrite(imgFinal,"imgFinal.png")
+% quality = 95;
+% filename = sprintf('imgFinal_%d.jpeg', quality);
+% imgFinal_uint8 = uint8(imgFinal * 255);
+% imwrite(imgFinal_uint8, filename, 'Quality', quality);
 
