@@ -13,9 +13,8 @@ format long
 %-------------------------------------------------------------------------
 % Ex. 1: Read the image 
 
-% imageData = imread('IMG_0596.tiff');
-imageData = imread('IMG_0998.tiff');
-% imageData = imread('IMG_0949.tiff');
+imageData = imread('IMG_0596.tiff');
+% imageData = imread('IMG_0998.tiff');
 % figure; imshow(imageData);
 
 % Get the size of the image
@@ -179,8 +178,7 @@ end
 %-------------------------------------------------------------------------
 %% Ex. 4: White balancing
 % Gray World Balancing
-figure;imshow(image);
-image = gw_balancing(image);
+% image = gw_balancing(image);
 % figure;imshow(imgGWbal);
 
 % Gray World Balancing
@@ -188,8 +186,7 @@ image = gw_balancing(image);
 % figure;imshow(imgWWbal);
 
 % Manual Balancing
-% image = m_balancing(image);
-% image = m_balancing(image);
+image = m_balancing(image);
 % figure;imshow(image);
 
 %figure;imshow(imgDem);
@@ -243,7 +240,7 @@ end
 % imgDenoised = denoise(image, @denoiseMean, 10);
 % figure;imshow(imgDenoised);
 % 
-imgDenoised = denoise(image, @denoiseMean, 10, true);
+imgDenoised = denoise(image, @denoiseMean, 10, false);
 % figure;imshow(imgDenoised);
 
 % imgDenoised = denoise(image, @denoiseMedian, 5);
