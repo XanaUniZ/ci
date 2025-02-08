@@ -13,7 +13,9 @@ format long
 %-------------------------------------------------------------------------
 % Ex. 1: Read the image 
 
-imageData = imread('IMG_0596.tiff');
+% imageData = imread('IMG_0596.tiff');
+imageData = imread('IMG_0998.tiff');
+% imageData = imread('IMG_0949.tiff');
 % figure; imshow(imageData);
 
 % Get the size of the image
@@ -47,7 +49,7 @@ fprintf('\nMin: %.4f\n', min(image(:)));
 fprintf('Max: %.4f\n', max(image(:)));
 
 % Optionally, visualize the image
-% figure;imshow(imageDataLin);
+% figure;imshow(image);
 
 %-------------------------------------------------------------------------
 %% Ex. 3: Demosaicing
@@ -96,9 +98,11 @@ function demImage = my_demosaic (inImage, convolve_RB, convolve_G)
     % Extract RGGB pattern components
     % Red channel (R in RGGB is at [1,1])
     redChannel(1:2:end, 1:2:end) = inImage(1:2:end, 1:2:end);
+    % blueChannel(1:2:end, 1:2:end) = inImage(1:2:end, 1:2:end);
     
     % Blue channel (B in RGGB is at [2,2])
     blueChannel(2:2:end, 2:2:end) = inImage(2:2:end, 2:2:end);
+    % redChannel(2:2:end, 2:2:end) = inImage(2:2:end, 2:2:end);
     
     % Green channel (G in RGGB is at [1,2] and [2,1])
     greenChannel(1:2:end, 2:2:end) = inImage(1:2:end, 2:2:end);
@@ -175,17 +179,18 @@ end
 %-------------------------------------------------------------------------
 %% Ex. 4: White balancing
 % Gray World Balancing
-imageGW = gw_balancing(image);
+figure;imshow(image);
+image = gw_balancing(image);
 % figure;imshow(imgGWbal);
 
 % Gray World Balancing
-imageWW = ww_balancing(image);
+% image = m_balancing(image);
 % figure;imshow(imgWWbal);
 
 % Manual Balancing
 % image = m_balancing(image);
-image = m_balancing(image);
-%figure;imshow(image);
+% image = m_balancing(image);
+% figure;imshow(image);
 
 %figure;imshow(imgDem);
 
@@ -207,17 +212,19 @@ function balancedIm = ww_balancing (inImage)
 end
 
 function balancedIm = m_balancing (inImage)
-    % imshow(inImage);
-    % % Usar ginput para capturar un clic del usuario
-    % [x, y] = ginput(1); % Permite un solo clic (puedes cambiar el número para más clics)
-    % 
-    % % Convertir las coordenadas a índices enteros
-    % col = round(x); % Columna (width)
-    % row = round(y); % Fila (height)
-    % col
-    % row
-    col = 3013;
-    row = 1425;
+    imshow(inImage);
+    % Usar ginput para capturar un clic del usuario
+    [x, y] = ginput(1); % Permite un solo clic (puedes cambiar el número para más clics)
+
+    % Convertir las coordenadas a índices enteros
+    col = round(x); % Columna (width)
+    row = round(y); % Fila (height)
+    col
+    row
+
+    % Test Img
+    % col = 2365;
+    % row = 2181;
     channelSum = sum(inImage(row,col,:));
     S_R = channelSum / (3*inImage(row,col,1));
     S_G = channelSum / (3*inImage(row,col,2));
@@ -225,6 +232,7 @@ function balancedIm = m_balancing (inImage)
 
     balancer = [S_R, S_G, S_B];
     balancedIm = inImage .* reshape(balancer, 1, 1, []);
+    balancedIm(row,col)
 
 end
 %-------------------------------------------------------------------------
@@ -235,7 +243,7 @@ end
 % imgDenoised = denoise(image, @denoiseMean, 10);
 % figure;imshow(imgDenoised);
 % 
-% imgDenoised = denoise(image, @denoiseMean, 50, true);
+imgDenoised = denoise(image, @denoiseMean, 10, true);
 % figure;imshow(imgDenoised);
 
 % imgDenoised = denoise(image, @denoiseMedian, 5);
@@ -247,7 +255,7 @@ end
 % imgDenoised = denoise(image, @denoiseMedian, 50);
 % figure;imshow(imgDenoised);
 
-image = denoise(image, @denoiseGaussian, 10, false);
+% image = denoise(image, @denoiseGaussian, 10, false);
 % figure;imshow(imgDenoised);
 
 
@@ -274,7 +282,8 @@ function denoised = denoiseMean(channel_in, kSize, plotFFT)
     kernel = kernel / (kSize*kSize);    % Normalize the kernel
     if plotFFT
         % Compute FFT for mean kernel
-        fft_mean = fft2(kernel);
+        kernel_pad = padarray(kernel, [10,10],0,"both");
+        fft_mean = fft2(kernel_pad);
         fft_mean_shifted = fftshift(fft_mean);
         magnitude_mean = abs(fft_mean_shifted);
         log_magnitude_mean = log(1 + magnitude_mean);  % Log scale for visualization
@@ -284,7 +293,7 @@ function denoised = denoiseMean(channel_in, kSize, plotFFT)
         
         % Mean kernel spatial domain
         subplot(2, 2, 1);
-        imagesc(kernel);
+        imagesc(kernel_pad);
         title('Mean Kernel (Spatial Domain)');
         colorbar;
         axis image;
@@ -371,7 +380,7 @@ end
 
 % -------------------------------------------------------------------------
 %% Ex. 6: Color balance
-saturationBoost = 1.5;
+saturationBoost = 1.8;
 imgHSV = rgb2hsv(image);
 S = imgHSV(:,:,2);
 S = saturationBoost * S;
@@ -392,7 +401,7 @@ image = min(max(image, 0), 1);
 % figure;imshow(image);
 
 % Non-Linnear GC
-gamma = 1.6;
+gamma = 1.8;
 imgMinorMask = (image <= 0.0031308);
 imgMajorMask = (image > 0.0031308);
 imgGC = zeros(size(image));
