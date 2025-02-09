@@ -31,17 +31,19 @@ k1 = k1 * (flow / max(k1(:)));
 % Apply blur
 f1 = zDefocused(f0, k1, sigma, 0);
 
-% %% Recover Original
-% f0_hat = zDeconvWNR(f1, k1, C);
+% Recover Original
+f0_hat = zDeconvWNR(f1, k1, C);
 
 %% Option 1: Lucy–Richardson Deconvolution (deconvlucy)
 num_iter = 30;  % you can experiment with different numbers of iterations
 f0_hat = deconvlucy(f1, k1, num_iter);
 
-% %% Option 2: Wiener Deconvolution (deconvwnr)
-% NSR = sigma^2;  
-% f0_hat = deconvwnr(f1, k1, NSR);
-
+%% Option 2: Wiener Deconvolution (deconvwnr)
+% For Wiener deconvolution, we need an estimate of the noise-to-signal ratio (NSR).
+% One common approach is to use sigma^2. Alternatively, if you have an estimate of 
+% the image variance, you might set NSR = sigma^2 / var(f0(:));
+NSR = sigma^2;  % or try NSR = sigma^2 / var(f0(:));
+f0_hat = deconvwnr(f1, k1, NSR);
 % Display results
 figure;
 
