@@ -1,6 +1,6 @@
 % Read data
 aperture = imread('apertures/circular.bmp');
-image = imread('images/penguins.jpg');
+image = imread('images/town.jpg');
 image = image(:, :, 1);
 
 % Noise level (gaussian noise)
