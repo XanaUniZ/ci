@@ -1,6 +1,6 @@
 % Read data
 aperture = imread('apertures/circular.bmp');
-image = imread('images/penguins.jpg');
+image = imread('images/town.jpg');
 image = image(:, :, 1);
 
 % Noise level (Gaussian noise)
@@ -35,12 +35,12 @@ f1 = zDefocused(f0, k1, sigma, 0);
 % f0_hat = zDeconvWNR(f1, k1, C);
 
 %% Option 1: Lucy–Richardson Deconvolution (deconvlucy)
-num_iter = 30;  % you can experiment with different numbers of iterations
+num_iter = 100;  % you can experiment with different numbers of iterations
 f0_hat = deconvlucy(f1, k1, num_iter);
 
 % %% Option 2: Wiener Deconvolution (deconvwnr)
 % NSR = sigma^2;  
-% f0_hat = deconvwnr(f1, k1, NSR);
+% f0_hat = deconvwnr(f1, k1, 2*NSR);
 
 % Display results
 figure;

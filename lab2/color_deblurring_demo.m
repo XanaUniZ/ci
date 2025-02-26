@@ -1,6 +1,6 @@
 % Read data
 aperture = imread('apertures/circular.bmp');
-image   = imread('images/penguins.jpg');  
+image   = imread('images/town.jpg');  
 % (Do not extract a single channel so that we preserve color)
 
 % Noise level (Gaussian noise)
