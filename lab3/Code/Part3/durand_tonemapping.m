@@ -1,7 +1,8 @@
 function [final_image] = durand_tonemapping( ...
     hdr, ...
     dR, ...
-    fignum ...
+    fignum, ...
+    naive ...
     )
     
     % Compute the intensity I by averaging the color channels.
@@ -10,30 +11,35 @@ function [final_image] = durand_tonemapping( ...
     % Compute the log intensity: L=log2(I)
     L = log(I);
     
-    % Filter that with a bilateral filter: B=bf(L)
-    degreeOfSmoothing = 0.4;
-    spatialSigma = 0.02 * size(hdr, 1);
-    B = imbilatfilt(L, degreeOfSmoothing, spatialSigma);
+    if ~naive
+        % Filter that with a bilateral filter: B=bf(L)
+        degreeOfSmoothing = 0.4;
+        spatialSigma = 0.02 * size(hdr, 1);
+        B = imbilatfilt(L, degreeOfSmoothing, spatialSigma);
+        
+        % Compute the detail layer: D=L−B
+        D = L-B;
+        
+        clf(figure(fignum))
+        figure(fignum)
     
-    % Compute the detail layer: D=L−B
-    D = L-B;
-    
-    clf(figure(fignum))
-    figure(fignum)
-
-    subplot(1, 3, 1)
-    imagesc(L)
-    axis image;
-    
-    subplot(1, 3, 2)
-    imagesc(B)
-    axis image;
-    
-    subplot(1, 3, 3)
-    imagesc(D)
-    axis image;
-    
-    saveas(gcf,"Results/base_decomposition.png")
+        subplot(1, 3, 1)
+        imagesc(L)
+        axis image;
+        
+        subplot(1, 3, 2)
+        imagesc(B)
+        axis image;
+        
+        subplot(1, 3, 3)
+        imagesc(D)
+        axis image;
+        
+        saveas(gcf,"Results/base_decomposition.png")
+    else
+        B = L;
+        D = zeros(size(B));
+    end
     
     % Apply an offset and a scale to the base: B′=(B−o)∗s
     o = max(max(B));
