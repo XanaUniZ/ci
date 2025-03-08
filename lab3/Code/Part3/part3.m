@@ -2,7 +2,7 @@
 hdr = hdrread('../Part1/Results/hdr_image.hdr');
 
 fignum = 6;
-naive = true;
+naive = false;
 
 if naive
     n = "_naive";
@@ -10,7 +10,7 @@ else
     n = "";
 end
 
-for dR = [2, 4, 6]
+for dR = [2, 4, 6, 8]
 
     imwrite( ...
         durand_tonemapping(hdr, dR, fignum, naive), ...
