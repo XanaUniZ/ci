@@ -1,4 +1,4 @@
-function G = backProjection_reconstruction(data, resolution_voxel, resolution_capture)
+function [G] = backproject_new(data, resolution_voxel, resolution_capture)
     laser_origin = data.laserOrigin;
     spad_origin = data.spadOrigin;
 
