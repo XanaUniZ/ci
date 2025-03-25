@@ -1,4 +1,4 @@
-function [g] = backprojection_fast(data, n_voxels)
+function [g] = backprojection_confocal(data, n_voxels)
     origin = data.data.volumePosition;
     volSize = 1; % data.data.volumeSize + data.data.volumeSize*0.1
     delta_voxel = volSize / n_voxels;
@@ -39,21 +39,18 @@ function [g] = backprojection_fast(data, n_voxels)
             l = l(:);
             % Distance from the laser to the rellay wall
             d1 = norm(l - lo(:));
-            for si = 1:size(xss, 1)
-                for sj = 1:size(xss, 2)
-                    s = xss(si, sj, :);
-                    s = s(:);
-                    % Distance from the relay wall to the SPAD
-                    d4 = norm(so(:) - s);
-                    % Distance from the voxel to the relay wall laser
-                    d2 = vecnorm(bsxfun(@minus, volume, l), 2, 1);
-                    % Distance from the voxel to the relay wall SPAD
-                    d3 = vecnorm(bsxfun(@minus, volume, s), 2, 1);
-                    t = (d1 + d2 + d3 + d4);
-                    index = round(t / data.data.deltaT) - data.data.t0;
-                    g = g + reshape(H(li, lj, si, sj, index), size(g));
-                end
-            end
+            
+            s = xss(li, lj, :);
+            s = s(:);
+            % Distance from the relay wall to the SPAD
+            d4 = norm(so(:) - s);
+            % Distance from the voxel to the relay wall laser
+            d2 = vecnorm(bsxfun(@minus, volume, l), 2, 1);
+            % Distance from the voxel to the relay wall SPAD
+            d3 = vecnorm(bsxfun(@minus, volume, s), 2, 1);
+            t = (d1 + d2 + d3 + d4);
+            index = round(t / data.data.deltaT) - data.data.t0;
+            g = g + reshape(H(li, lj, index), size(g));
         end
     end
 

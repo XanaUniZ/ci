@@ -1,4 +1,4 @@
-function [g] = backprojection_fast(data, n_voxels)
+function [g] = backprojection_phasor(data, n_voxels)
     origin = data.data.volumePosition;
     volSize = 1; % data.data.volumeSize + data.data.volumeSize*0.1
     delta_voxel = volSize / n_voxels;
@@ -12,7 +12,14 @@ function [g] = backprojection_fast(data, n_voxels)
     lo = data.data.laserOrigin;
     so = data.data.spadOrigin;
 
-    H = data.data.data;
+    H = data.data.data;  % raw 5D data
+
+    % =============== NEW: Filter H before backprojection ===============
+    % Choose suitable Omega_c, sigma, e.g.:
+    Omega_c = 2 * pi * 0.75e9;  % Example: 0.75 GHz in rad/s
+    sigma   = 2e-9;            % Example: 2 ns time-domain spread
+    H = morlet_filter_1D(H, data.data.deltaT, Omega_c, sigma);
+    % ===================================================================
 
     % PRECOMPUTE THE VOLUME
     % Generate coordinate vectors for each axis
@@ -57,4 +64,46 @@ function [g] = backprojection_fast(data, n_voxels)
         end
     end
 
+end
+
+
+function H_filtered = morlet_filter_1D(H, deltaT, Omega_c, sigma)
+    % MORLET_FILTER_1D Filter H along its time dimension using a 1D Morlet wavelet
+    %
+    %   H:        5D array [L1, L2, S1, S2, T]
+    %   deltaT:   temporal resolution (seconds per time bin)
+    %   Omega_c:  center angular frequency of wavelet (rad/s)
+    %   sigma:    standard deviation of wavelet envelope in the time domain
+
+    % Unpack size
+    [L1, L2, S1, S2, T] = size(H);
+
+    % Convert angular freq (Omega_c) to cyclic freq (f_c)
+    f_c = Omega_c / (2*pi);
+
+    % Sampling rate in Hz
+    Fs = 1 / deltaT;
+
+    % Create frequency axis for dimension T
+    % The simplest approach is an unshifted frequency array from 0..Fs-Δf
+    % Then we map frequencies above Fs/2 to negative frequencies (common in FFT).
+    freq = (0 : T-1) * (Fs / T);
+    % Move frequencies above Fs/2 into negative range (standard "wrapped" FFT freq)
+    freq(freq > Fs/2) = freq(freq > Fs/2) - Fs;
+
+    % 1) FFT along time dimension
+    H_fft = fft(H, [], 5);
+
+    % 2) Build Morlet kernel in frequency domain
+    %    Morlet ~ exp( -2 pi^2 sigma^2 (f - f_c)^2 ), ignoring constant factors
+    morletKernel = exp( -2 * pi^2 * sigma^2 * (freq - f_c).^2 );
+    % Reshape to broadcast along the 5th dimension
+    morletKernel = reshape(morletKernel, [1 1 1 1 T]);
+
+    % 3) Multiply in frequency domain
+    H_fft_filtered = H_fft .* morletKernel;
+
+    % 4) Inverse FFT along time dimension to get H'
+    %    If you expect complex results, omit 'symmetric'.
+    H_filtered = ifft(H_fft_filtered, [], 5, 'symmetric');
 end
