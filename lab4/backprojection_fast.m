@@ -1,5 +1,5 @@
 function [g] = backprojection_fast(data, n_voxels)
-    origin = data.data.volumePosition;
+    origin = data.data.volumePosition; %+ [0; -0.3; 0];
     volSize = 1; % data.data.volumeSize + data.data.volumeSize*0.1
     delta_voxel = volSize / n_voxels;
     g = zeros(n_voxels, n_voxels, n_voxels);

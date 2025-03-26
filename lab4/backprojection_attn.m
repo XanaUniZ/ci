@@ -1,6 +1,7 @@
 function [g] = backprojection_attn(data, n_voxels)
-    origin = data.data.volumePosition;
-    volSize = 1; % data.data.volumeSize + data.data.volumeSize*0.1
+    eps = 0.005;
+    origin = data.data.volumePosition + [0; -0.3; 0];
+    volSize =  data.data.volumeSize + data.data.volumeSize*0.1;
     delta_voxel = volSize / n_voxels;
     g = zeros(n_voxels, n_voxels, n_voxels);
     % Calculate the minimum corner of the entire volume (starting point)
@@ -53,7 +54,8 @@ function [g] = backprojection_attn(data, n_voxels)
                     t = (d1 + d2 + d3 + d4);
 
                     % Calculate quadratic attenuation factor
-                    quadratic_attenuation = (d2 + d3) .* (d2 + d3);
+                    % quadratic_attenuation = (d2 + d3) .* (d2 + d3);
+                    quadratic_attenuation = (d2.^2).*(d3.^2);
                     
                     % Calculate laser-related cosine term components
                     laser_normal = squeeze(data.laserNormals(li, lj, :));
@@ -61,7 +63,7 @@ function [g] = backprojection_attn(data, n_voxels)
                     replicated_laser_normal = repmat(laser_normal, 1, size(volume, 2));
                     volume_relative_to_laser = volume - l;
                     laser_dot_product = dot(volume_relative_to_laser, replicated_laser_normal, 1);
-                    cos_laser = laser_dot_product ./ (d2 * norm_laser_denominator);
+                    cos_laser = abs(laser_dot_product ./ (d2 * norm_laser_denominator + eps));
                     
                     % Calculate SPAD-related cosine term components
                     spad_normal = squeeze(data.spadNormals(si, sj, :));
@@ -69,13 +71,14 @@ function [g] = backprojection_attn(data, n_voxels)
                     replicated_spad_normal = repmat(spad_normal, 1, size(volume, 2));
                     volume_relative_to_spad = volume - s;
                     spad_dot_product = dot(volume_relative_to_spad, replicated_spad_normal, 1);
-                    cos_spad = spad_dot_product ./ (d3 * norm_spad_denominator);
+                    cos_spad = abs(spad_dot_product ./ (d3 * norm_spad_denominator + eps));
                     
                     % Combine to get final cosine attenuation term
                     cosine_term = cos_laser .* cos_spad;
 
                     % Combine attenuation factors
-                    attenuation = quadratic_attenuation .* cosine_term;
+                    attenuation = quadratic_attenuation ./ cosine_term;
+                    % attenuation = quadratic_attenuation;
 
                     index = round(t / data.deltaT) - data.t0;
                     g = g + (reshape(H(li, lj, si, sj, index), size(g)) .* reshape(attenuation, size(g)));
