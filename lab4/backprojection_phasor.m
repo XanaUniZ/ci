@@ -1,5 +1,5 @@
 function [g] = backprojection_phasor(data, n_voxels)
-    origin = data.data.volumePosition + [0; -0.3; 0];
+    origin = data.data.volumePosition + [0; 0.; 0];
     volSize = 1; % data.data.volumeSize + data.data.volumeSize*0.1
     delta_voxel = volSize / n_voxels;
     g = zeros(n_voxels, n_voxels, n_voxels);
@@ -16,9 +16,9 @@ function [g] = backprojection_phasor(data, n_voxels)
 
     % Delta defined by spacing
     deltaT = norm(squeeze(data.data.spadPositions(2,1,:)) - squeeze(data.data.spadPositions(1,1,:)));
-    lambda = 2*deltaT; 
+    lambda = 4*deltaT; 
     Omega_c = 1/lambda;
-    sigma = lambda;
+    sigma = 2*lambda;
     H = morlet_filter_1D(H, data.data.deltaT, Omega_c, sigma);
 
     % PRECOMPUTE THE VOLUME
